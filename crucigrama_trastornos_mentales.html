@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crucigrama: Trastornos Mentales</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Soft slate background */
+            color: #334155;
+        }
+
+        .crossword-grid {
+            display: grid;
+            grid-template-columns: repeat(10, minmax(0, 1fr));
+            gap: 2px;
+            background-color: #1e293b; /* Slate 800 for grid lines / blocked cells */
+            padding: 2px;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .cell {
+            position: relative;
+            background-color: #0f172a; /* Blocked cell color (completamente negras/oscuras) */
+            aspect-ratio: 1 / 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 0.125rem;
+        }
+
+        .cell.active {
+            background-color: #ffffff; /* Active cell color (blancas) */
+        }
+
+        .cell.active.highlighted {
+            background-color: #e0f2fe; /* Light blue for active word */
+        }
+        
+        .cell.active.focused {
+            background-color: #bae6fd; /* Darker blue for current cell */
+        }
+
+        .cell-input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #0f172a;
+            outline: none;
+            padding: 0;
+            cursor: pointer;
+            caret-color: transparent; /* Oculta el cursor de texto parpadeante para simular un juego real */
+        }
+
+        @media (max-width: 640px) {
+            .cell-input {
+                font-size: 1rem;
+            }
+        }
+
+        .cell-number {
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: #475569;
+            pointer-events: none;
+        }
+
+        .clue-item {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .clue-item:hover {
+            background-color: #f1f5f9;
+        }
+        .clue-item.active-clue {
+            background-color: #e0f2fe;
+            border-left: 4px solid #0284c7;
+        }
+
+        /* Modal transitions */
+        .modal-enter {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        .modal-enter-active {
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 300ms, transform 300ms;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                <h1 class="text-xl md:text-2xl font-bold text-slate-800">CruciMente</h1>
+            </div>
+            <div class="flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-full border border-slate-200">
+                <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span id="timer" class="font-mono text-lg font-bold text-slate-700">05:00</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-6 md:py-10">
+        <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start">
+            
+            <!-- Contenedor del Crucigrama -->
+            <div class="w-full lg:w-1/2 flex justify-center order-1">
+                <div id="crossword" class="crossword-grid">
+                    <!-- Las celdas se generarán por JavaScript -->
+                </div>
+            </div>
+
+            <!-- Contenedor de Pistas -->
+            <div class="w-full lg:w-1/2 flex flex-col gap-6 order-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <span class="bg-cyan-100 text-cyan-800 px-2 py-1 rounded text-sm">H</span> Horizontales
+                    </h2>
+                    <ul id="clues-horizontal" class="space-y-2">
+                        <!-- Pistas horizontales -->
+                    </ul>
+                </div>
+
+                <div class="w-full h-px bg-slate-100"></div>
+
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <span class="bg-cyan-100 text-cyan-800 px-2 py-1 rounded text-sm">V</span> Verticales
+                    </h2>
+                    <ul id="clues-vertical" class="space-y-2">
+                        <!-- Pistas verticales -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="message-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center z-50 transition-opacity">
+        <div class="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl text-center transform scale-90 transition-transform duration-300" id="modal-content">
+            <div id="modal-icon" class="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">
+                <!-- Icono dinámico -->
+            </div>
+            <h3 id="modal-title" class="text-2xl font-bold text-slate-800 mb-2"></h3>
+            <p id="modal-desc" class="text-slate-600 mb-6"></p>
+            <button onclick="location.reload()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors">
+                Jugar de nuevo
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de la grilla (11 filas x 10 columnas)
+        const ROWS = 11;
+        const COLS = 10;
+        
+        // Datos del crucigrama
+        const words = [
+            { id: 1, text: "AUTISMO", clue: "Trastorno del desarrollo que afecta la comunicación y el comportamiento.", dir: "V", r: 0, c: 8 },
+            { id: 2, text: "ANSIEDAD", clue: "Preocupación o miedo intenso y continuo ante situaciones cotidianas.", dir: "V", r: 1, c: 1 },
+            { id: 3, text: "TOC", clue: "Trastorno caracterizado por pensamientos obsesivos y comportamientos compulsivos.", dir: "V", r: 2, c: 6 },
+            { id: 4, text: "FOBIA", clue: "Temor fuerte e irracional de algo que representa poco peligro real.", dir: "H", r: 3, c: 5 },
+            { id: 5, text: "BIPOLAR", clue: "Provoca altibajos emocionales extremos, desde depresión hasta manía.", dir: "V", r: 4, c: 3 },
+            { id: 6, text: "DEPRESION", clue: "Trastorno del estado de ánimo que causa un sentimiento persistente de tristeza.", dir: "H", r: 6, c: 1 },
+            { id: 7, text: "PANICO", clue: "Aparición repentina de un miedo intenso que provoca reacciones físicas.", dir: "H", r: 9, c: 2 }
+        ];
+
+        // Estado del juego
+        let gridMap = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+        let currentDirection = 'H'; // 'H' o 'V'
+        let selectedCell = null;
+        let timerInterval;
+        let timeLeft = 300; // 5 minutos en segundos
+        let isGameOver = false;
+
+        function buildGridMap() {
+            words.forEach(word => {
+                let r = word.r;
+                let c = word.c;
+                
+                for (let i = 0; i < word.text.length; i++) {
+                    if (!gridMap[r][c]) {
+                        gridMap[r][c] = {
+                            correctLetter: word.text[i],
+                            number: i === 0 ? word.id : null,
+                            words: [] // IDs de las palabras que cruzan por aquí
+                        };
+                    } else if (i === 0 && !gridMap[r][c].number) {
+                        gridMap[r][c].number = word.id;
+                    }
+                    gridMap[r][c].words.push({ id: word.id, dir: word.dir });
+                    
+                    if (word.dir === 'H') c++;
+                    else r++;
+                }
+            });
+        }
+
+        function renderUI() {
+            const gridContainer = document.getElementById('crossword');
+            const cluesH = document.getElementById('clues-horizontal');
+            const cluesV = document.getElementById('clues-vertical');
+            
+            // Generar Grilla
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cellData = gridMap[r][c];
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'cell';
+                    
+                    if (cellData) {
+                        cellDiv.classList.add('active');
+                        cellDiv.dataset.r = r;
+                        cellDiv.dataset.c = c;
+                        
+                        if (cellData.number) {
+                            const numSpan = document.createElement('span');
+                            numSpan.className = 'cell-number';
+                            numSpan.textContent = cellData.number;
+                            cellDiv.appendChild(numSpan);
+                        }
+                        
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.maxLength = 1;
+                        input.className = 'cell-input';
+                        input.id = `input-${r}-${c}`;
+                        input.dataset.r = r;
+                        input.dataset.c = c;
+                        
+                        // Event listeners para interacción
+                        input.addEventListener('focus', () => handleCellFocus(r, c));
+                        input.addEventListener('click', () => handleCellClick(r, c));
+                        input.addEventListener('input', (e) => handleInput(e, r, c));
+                        input.addEventListener('keydown', (e) => handleKeyDown(e, r, c));
+                        
+                        cellDiv.appendChild(input);
+                    }
+                    
+                    gridContainer.appendChild(cellDiv);
+                }
+            }
+
+            // Generar Pistas
+            words.forEach(word => {
+                const li = document.createElement('li');
+                li.className = 'clue-item p-3 rounded-lg text-sm text-slate-700 flex gap-3';
+                li.id = `clue-${word.id}`;
+                li.innerHTML = `<span class="font-bold text-slate-900 min-w-[1.5rem]">${word.id}.</span> <span>${word.clue}</span>`;
+                li.addEventListener('click', () => handleClueClick(word));
+                
+                if (word.dir === 'H') {
+                    cluesH.appendChild(li);
+                } else {
+                    cluesV.appendChild(li);
+                }
+            });
+        }
+
+        function handleCellFocus(r, c) {
+            if (isGameOver) return;
+            selectedCell = { r, c };
+            updateHighlighting();
+        }
+
+        function handleCellClick(r, c) {
+            if (isGameOver) return;
+            // Si hace click en la misma celda ya enfocada, cambia la dirección
+            if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
+                const cellWords = gridMap[r][c].words;
+                if (cellWords.length > 1) {
+                    currentDirection = currentDirection === 'H' ? 'V' : 'H';
+                } else {
+                    currentDirection = cellWords[0].dir;
+                }
+            } else {
+                // Selecciona la dirección de la palabra activa en esa celda
+                const cellWords = gridMap[r][c].words;
+                if (!cellWords.some(w => w.dir === currentDirection)) {
+                    currentDirection = cellWords[0].dir;
+                }
+            }
+            selectedCell = { r, c };
+            updateHighlighting();
+        }
+
+        function handleClueClick(word) {
+            if (isGameOver) return;
+            currentDirection = word.dir;
+            const input = document.getElementById(`input-${word.r}-${word.c}`);
+            if (input) input.focus();
+        }
+
+        function updateHighlighting() {
+            // Limpiar highlights previos
+            document.querySelectorAll('.cell.active').forEach(el => {
+                el.classList.remove('highlighted', 'focused');
+            });
+            document.querySelectorAll('.clue-item').forEach(el => {
+                el.classList.remove('active-clue');
+            });
+
+            if (!selectedCell) return;
+
+            const { r, c } = selectedCell;
+            const cellData = gridMap[r][c];
+            if (!cellData) return;
+
+            // Encontrar la palabra actual basada en la dirección
+            let activeWordObj = cellData.words.find(w => w.dir === currentDirection);
+            if (!activeWordObj) {
+                activeWordObj = cellData.words[0];
+                currentDirection = activeWordObj.dir;
+            }
+
+            // Resaltar celdas de la palabra
+            const wordDef = words.find(w => w.id === activeWordObj.id);
+            let currR = wordDef.r;
+            let currC = wordDef.c;
+            
+            for (let i = 0; i < wordDef.text.length; i++) {
+                const parentDiv = document.getElementById(`input-${currR}-${currC}`).parentElement;
+                parentDiv.classList.add('highlighted');
+                
+                if (currR === r && currC === c) {
+                    parentDiv.classList.add('focused');
+                }
+                
+                if (wordDef.dir === 'H') currC++;
+                else currR++;
+            }
+
+            // Resaltar pista
+            const clueEl = document.getElementById(`clue-${wordDef.id}`);
+            if (clueEl) {
+                clueEl.classList.add('active-clue');
+                clueEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function handleInput(e, r, c) {
+            if (isGameOver) return;
+            
+            const input = e.target;
+            input.value = input.value.toUpperCase();
+            
+            if (input.value) {
+                // Auto-avanzar
+                moveToNext(r, c, 1);
+                checkWin();
+            }
+        }
+
+        function handleKeyDown(e, r, c) {
+            if (isGameOver) return;
+
+            if (e.key === 'Backspace' && !e.target.value) {
+                e.preventDefault();
+                moveToNext(r, c, -1);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                moveFocus(r, c + 1);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                moveFocus(r, c - 1);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moveFocus(r + 1, c);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moveFocus(r - 1, c);
+            }
+        }
+
+        function moveToNext(r, c, step) {
+            let nextR = r;
+            let nextC = c;
+            
+            if (currentDirection === 'H') nextC += step;
+            else nextR += step;
+            
+            moveFocus(nextR, nextC);
+        }
+
+        function moveFocus(r, c) {
+            const nextInput = document.getElementById(`input-${r}-${c}`);
+            if (nextInput) {
+                nextInput.focus();
+                // moveFocus trigger the focus event which handles highlighting
+            }
+        }
+
+        function checkWin() {
+            let isComplete = true;
+            let isCorrect = true;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (gridMap[r][c]) {
+                        const input = document.getElementById(`input-${r}-${c}`);
+                        if (!input.value) {
+                            isComplete = false;
+                        } else if (input.value !== gridMap[r][c].correctLetter) {
+                            isCorrect = false;
+                        }
+                    }
+                }
+            }
+
+            if (isComplete && isCorrect) {
+                endGame(true);
+            }
+        }
+
+        function startTimer() {
+            const timerEl = document.getElementById('timer');
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeLeft <= 60) {
+                    timerEl.classList.remove('text-slate-700');
+                    timerEl.classList.add('text-red-600', 'animate-pulse');
+                }
+                
+                if (timeLeft <= 0) {
+                    endGame(false);
+                }
+            }, 1000);
+        }
+
+        function endGame(isWin) {
+            isGameOver = true;
+            clearInterval(timerInterval);
+            
+            // Deshabilitar inputs
+            document.querySelectorAll('.cell-input').forEach(input => {
+                input.disabled = true;
+            });
+
+            // Mostrar modal
+            const modal = document.getElementById('message-modal');
+            const modalContent = document.getElementById('modal-content');
+            const title = document.getElementById('modal-title');
+            const desc = document.getElementById('modal-desc');
+            const icon = document.getElementById('modal-icon');
+
+            modal.classList.remove('hidden');
+            
+            // Forzar reflow para que la animación funcione
+            void modal.offsetWidth; 
+            modalContent.classList.add('scale-100');
+            modalContent.classList.remove('scale-90');
+
+            if (isWin) {
+                title.textContent = '¡Felicidades!';
+                desc.textContent = `Has resuelto el crucigrama correctamente. Tiempo restante: ${document.getElementById('timer').textContent}.`;
+                icon.innerHTML = `<svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                icon.className = 'w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-green-100';
+            } else {
+                title.textContent = '¡Tiempo agotado!';
+                desc.textContent = 'Se han acabado los 5 minutos. No te preocupes, ¡puedes intentarlo de nuevo!';
+                icon.innerHTML = `<svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+                icon.className = 'w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center bg-red-100';
+            }
+        }
+
+        // Inicialización
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                buildGridMap();
+                renderUI();
+                startTimer();
+                
+                // Enfocar primera celda automáticamente
+                setTimeout(() => {
+                    const firstInput = document.getElementById('input-0-8'); // Inicio de Autismo
+                    if (firstInput) firstInput.focus();
+                }, 100);
+
+            } catch (e) {
+                console.error("Error inicializando el crucigrama: ", e);
+            }
+        });
+    </script>
+</body>
+</html>
